@@ -1,0 +1,3 @@
+[submodule "pytradfri"]
+	path = pytradfri
+	url = https://github.com/ggravlingen/pytradfri
