@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""Provide a CLI for Tradfri."""
+
 import logging
-from pprint import pprint
 import sys
 import os
 import datetime
@@ -18,59 +17,51 @@ from pytradfri.command import Command
 
 
 def main():
+    logging.basicConfig(filename='plantnet.log', level=logging.INFO)
 
+    # api setup
     host = '192.168.15.11'
     with open('gateway.key', 'r') as keyfile:
         gateway_key = keyfile.read().replace('\n','')
-
-    logging.basicConfig(filename='plantnet.log', level=logging.INFO)
-
     api = api_factory(host, gateway_key)
     gateway = Gateway()
     devices_commands = api(gateway.get_devices())
     devices = api(*devices_commands)
     lights = [dev for dev in devices if dev.has_light_control]
-    light = lights[0]
-    groups = api(gateway.get_groups())
-    group = groups[0]
-    moods = api(gateway.get_moods())
-    mood = moods[0]
-    tasks = api(gateway.get_smart_tasks())
 
-    # Compute light level for current time
+
+    # Compute light level for current time -- lights should be on during the night
+    # so our time coordinate is in *hours since last noon*.
     tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
     now = datetime.datetime.now(tz)
 
-    starttime = now.replace(hour=10, minute=28, second=0, microsecond=0)
-    endtime = now.replace(hour=10, minute=35, second=0, microsecond=0)
+    # reference time: last noon
+    noontoday = now.replace(hour=12, minute=0, second=0, microsecond=0) # noon today
+    if now > noontoday: # pm
+        lastnoon = noontoday;
+    elif now < noontoday: # am
+        lastnoon = noontoday - datetime.timedelta(days=1)
+    else: # exactly noon, quite unlikely but let's handle it
+        lastnoon = noontoday
 
-    light_on = 10
+    tc = (now-lastnoon).total_seconds()/3600.0; # time coordinate: hours since last noon
+
+    starttime = 10 # lights on 10pm
+    endtime = 12+6.5 # lights off 6:30 am
+
+    light_on = 254
     light_off = 0
-    light_setlevel = light_off
 
-    if now >= starttime and now <= endtime:
+    # TODO: Fancy gradual increase/decrease of lights instead of sharp on/off
+    light_setlevel = light_off
+    if tc >= starttime and tc <= endtime:
         light_setlevel = light_on
 
     # Set lights
-    logstr = 'plantnet {}: Setting lights to {}'.format(time.strftime('%c'), light_setlevel)
+    logstr = 'plantnet {}: tc = {:0.2f}, setting lights to {}'.format(time.strftime('%c'), tc, light_setlevel)
     logging.info(logstr)
 
     for light in lights:
         api(light.light_control.set_dimmer(light_setlevel))
-
-#print()
-#print("Example commands:")
-#print("> devices")
-#print("> light.light_control.lights")
-#print("> api(light.light_control.set_dimmer(10))")
-#print("> api(light.light_control.set_dimmer(254))")
-#print("> api(light.light_control.set_xy_color(254))")
-#print("> api(lights[1].light_control.set_dimmer(20))")
-#print("> tasks[0].repeat_days_list")
-#print("> groups")
-#print("> moods")
-#print("> tasks")
-#print("> dump_devices()")
-#print("> dump_all()")
 
 main()
