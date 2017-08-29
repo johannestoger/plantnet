@@ -60,12 +60,14 @@ def main():
     lights = [dev for dev in devices if dev.has_light_control]
 
     # If number is supplied on 
-    if len(sys.argv) > 0:
+    light_setlevel = -1
+    tc = -1
+    if len(sys.argv) > 1:
         try:
             light_setlevel = int(sys.argv[1])
             tc = -1
         except ValueError:
-            light_setlevel = -1;
+            None
 
     if light_setlevel < 0:
         light_setlevel, tc = computelightlevel()
