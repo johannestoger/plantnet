@@ -15,21 +15,7 @@ from pytradfri.api.libcoap_api import api_factory
 from pytradfri.gateway import Gateway
 from pytradfri.command import Command
 
-
-def main():
-    logging.basicConfig(filename='plantnet.log', level=logging.INFO)
-
-    # api setup
-    host = '192.168.15.11'
-    with open('gateway.key', 'r') as keyfile:
-        gateway_key = keyfile.read().replace('\n','')
-    api = api_factory(host, gateway_key)
-    gateway = Gateway()
-    devices_commands = api(gateway.get_devices())
-    devices = api(*devices_commands)
-    lights = [dev for dev in devices if dev.has_light_control]
-
-
+def computelightlevel():
     # Compute light level for current time -- lights should be on during the night
     # so our time coordinate is in *hours since last noon*.
     tz = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
@@ -57,11 +43,46 @@ def main():
     if tc >= starttime and tc <= endtime:
         light_setlevel = light_on
 
+    return light_setlevel, tc
+
+
+def main():
+    logging.basicConfig(filename='plantnet.log', level=logging.INFO)
+
+    # api setup
+    host = '192.168.15.11'
+    with open('gateway.key', 'r') as keyfile:
+        gateway_key = keyfile.read().replace('\n','')
+    api = api_factory(host, gateway_key)
+    gateway = Gateway()
+    devices_commands = api(gateway.get_devices())
+    devices = api(*devices_commands)
+    lights = [dev for dev in devices if dev.has_light_control]
+
+    # If number is supplied on 
+    if len(sys.argv) > 0:
+        try:
+            light_setlevel = int(sys.argv[1])
+            tc = -1
+        except ValueError:
+            light_setlevel = -1;
+
+    if light_setlevel < 0:
+        light_setlevel, tc = computelightlevel()
+
     # Set lights
     logstr = 'plantnet {}: tc = {:0.2f}, setting lights to {}'.format(time.strftime('%c'), tc, light_setlevel)
     logging.info(logstr)
 
     for light in lights:
-        api(light.light_control.set_dimmer(light_setlevel))
+        # Set on/off state
+        target_state = light_setlevel > 0
+        current_state = light.light_control.lights[0].state
+
+        if not current_state == target_state:
+            api(light.light_control.set_state(target_state))
+
+        if target_state == True:
+            api(light.light_control.set_dimmer(light_setlevel))
 
 main()
