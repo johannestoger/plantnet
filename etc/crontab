@@ -22,4 +22,5 @@
 # m h  dom mon dow   command
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-*/5 * * * * /home/johannes/code/plantnet/setlights.py
+*/15 * * * * /home/johannes/code/plantnet/setlights.py
+11 35 * * * /home/johannes/code/plantnet/getimage.sh

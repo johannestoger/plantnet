@@ -32,8 +32,8 @@ def computelightlevel():
 
     tc = (now-lastnoon).total_seconds()/3600.0; # time coordinate: hours since last noon
 
-    starttime = 10 # lights on 10pm
-    endtime = 12+6.5 # lights off 6:30 am
+    starttime = 8 # lights on 8pm
+    endtime = 12+7 # lights off 7am
 
     light_on = 254
     light_off = 0
@@ -53,6 +53,7 @@ def main():
     host = '192.168.15.11'
     with open('gateway.key', 'r') as keyfile:
         gateway_key = keyfile.read().replace('\n','')
+
     api = api_factory(host, gateway_key)
     gateway = Gateway()
     devices_commands = api(gateway.get_devices())
